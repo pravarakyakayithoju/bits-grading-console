@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BITS Pilani Digital – Advanced Grading Console</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f5f3ff;--card:#fff;--tx:#111827;--mut:#4b5563;
+  --pri:#5b3cc4;--ink:#312e81;--chip:#ede9fe;--bd:#d1d5db;
+  --err:#b91c1c;--ok:#065f46;--warn-bg:#fef3c7;--warn-tx:#92400e;
+  --row-odd:#f9f8ff;--shadow:0 2px 12px rgba(0,0,0,.08);
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#15132a;--card:#1f1c3a;--tx:#f3f4f6;--mut:#9ca3af;
+    --pri:#8b73f0;--ink:#c7c2ff;--chip:#33305c;--bd:#4b4877;
+    --err:#fca5a5;--ok:#6ee7b7;--warn-bg:#3d2e05;--warn-tx:#fcd34d;
+    --row-odd:#1a1830;--shadow:0 2px 12px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15132a;--card:#1f1c3a;--tx:#f3f4f6;--mut:#9ca3af;
+  --pri:#8b73f0;--ink:#c7c2ff;--chip:#33305c;--bd:#4b4877;
+  --err:#fca5a5;--ok:#6ee7b7;--warn-bg:#3d2e05;--warn-tx:#fcd34d;
+  --row-odd:#1a1830;--shadow:0 2px 12px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+.container{max-width:1200px;margin:auto;padding:16px}
+
+/* HEADER */
+header{background:var(--card);border-radius:12px;padding:14px 20px;box-shadow:var(--shadow);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.header-left h1{font-size:20px;color:var(--ink)}
+.header-left h2{font-size:13px;font-weight:500;color:var(--pri);margin-top:2px}
+.header-right{display:flex;gap:8px;align-items:center}
+.theme-btn{background:var(--chip);border:none;border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--tx);font-size:13px}
+
+/* CONTROLS */
+.controls{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px;margin-bottom:8px}
+input,select,textarea{padding:8px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit;width:100%}
+input[type="file"]{padding:6px 8px}
+button{padding:9px 16px;border:none;border-radius:6px;background:var(--pri);color:#fff;font-weight:600;font-size:13px;cursor:pointer;transition:opacity .15s}
+button:hover{opacity:.88}
+button.sec{background:var(--chip);color:var(--tx)}
+button:disabled{opacity:.35;cursor:not-allowed}
+:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
+
+details{background:var(--card);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--mut);margin-bottom:10px}
+summary{cursor:pointer;font-weight:600;color:var(--ink)}
+details p{margin-top:6px;line-height:1.6}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:10px;border-bottom:2px solid var(--bd)}
+.tab{padding:8px 16px;cursor:pointer;border:none;background:none;color:var(--mut);font:inherit;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s}
+.tab.active{color:var(--pri);border-bottom-color:var(--pri);font-weight:700}
+
+/* WORKSPACE */
+.workspace{display:grid;grid-template-columns:minmax(0,440px) 1fr;gap:14px}
+.panel{background:var(--card);border-radius:12px;padding:14px;box-shadow:var(--shadow)}
+
+canvas{width:100%;height:auto;display:block;border-radius:8px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.stat{background:var(--chip);border-radius:8px;padding:8px 6px;font-size:12px;text-align:center}
+.stat b{font-size:15px;display:block;margin-top:2px;color:var(--ink)}
+.chips{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;font-size:12px}
+.chips span{background:var(--chip);padding:4px 10px;border-radius:999px;font-weight:500}
+
+/* GRADING PANEL */
+.mode-toggle{display:flex;gap:8px;margin-bottom:12px;background:var(--chip);border-radius:8px;padding:4px}
+.mode-btn{flex:1;padding:6px;border:none;border-radius:6px;background:none;color:var(--mut);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.mode-btn.active{background:var(--card);color:var(--pri);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+
+.grade-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.grade-card{border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font-size:13px}
+.grade-card strong{font-size:14px}
+.grade-card label{font-size:11px;color:var(--mut);display:block;margin-top:6px}
+.grade-card input{margin-top:2px;width:100%}
+.grade-card .maxlabel{font-size:11px;color:var(--mut);margin-top:4px}
+
+.hint-row{font-size:12px;color:var(--mut);margin-bottom:8px;line-height:1.5}
+.warnbox{background:var(--warn-bg);color:var(--warn-tx);border-radius:8px;padding:8px 12px;font-size:12px;margin:8px 0;line-height:1.6}
+.msg{font-size:13px;margin-top:8px}
+.err{color:var(--err)}.ok-msg{color:var(--ok)}
+
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.timer{margin-top:14px;display:flex;justify-content:center}
+.clk{width:88px;height:88px;position:relative}
+.clk svg{transform:rotate(-90deg)}
+#timerText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--pri)}
+
+/* NC PANEL */
+.nc-section{margin-top:14px;border-top:1px solid var(--bd);padding-top:12px}
+.nc-section h4{font-size:13px;font-weight:700;margin-bottom:6px;color:var(--ink)}
+.nc-section textarea{height:80px;font-size:12px;resize:vertical}
+.nc-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.nc-tag{background:var(--chip);border-radius:4px;padding:2px 8px;font-size:11px;display:flex;align-items:center;gap:4px}
+.nc-tag button{background:none;padding:0;color:var(--err);font-size:13px;line-height:1;font-weight:700}
+
+/* STUDENT TABLE */
+.tbl-wrap{overflow-x:auto;margin-top:10px;border-radius:8px;border:1px solid var(--bd)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--chip);padding:8px 12px;text-align:left;font-weight:700;color:var(--ink);white-space:nowrap}
+td{padding:7px 12px;border-top:1px solid var(--bd)}
+tr:nth-child(odd) td{background:var(--row-odd)}
+.grade-badge{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:700;font-size:12px;color:#fff}
+.search-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.search-row input{flex:1}
+.count-label{font-size:12px;color:var(--mut);white-space:nowrap}
+.empty-state{text-align:center;padding:30px;color:var(--mut);font-size:13px}
+
+@media(max-width:820px){.controls,.workspace{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <h1>BITS Pilani Digital</h1>
+    <h2>Advanced Grading Console</h2>
+  </div>
+  <div class="header-right">
+    <button class="theme-btn" id="themeBtn" aria-label="Toggle dark mode">🌙 Dark</button>
+  </div>
+</header>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <input id="instructor" placeholder="Instructor name (mandatory)" aria-label="Instructor name">
+  <input type="file" id="fileInput" accept=".xlsx,.xls" aria-label="Upload marks file">
+  <select id="course" disabled aria-label="Select course"><option value="">Upload a file to begin</option></select>
+</div>
+
+<details>
+  <summary>Marks file format guidance</summary>
+  <p>The Excel file must have exactly three columns with these exact headers: <b>BITS ID</b>, <b>Course</b>, <b>Total Marks</b>.</p>
+  <p>Marks must be whole numbers between 0–100. Students to be awarded NC should not be in the file — add them in the NC section below.</p>
+</details>
+
+<div id="report" aria-live="polite"></div>
+<div id="welcome" class="msg ok-msg" aria-live="polite"></div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+  <!-- LEFT: ANALYTICS -->
+  <div class="panel">
+    <canvas id="hist" width="760" height="460" role="img" aria-label="Marks histogram"></canvas>
+    <div class="stats">
+      <div class="stat">Min<b id="smin">–</b></div>
+      <div class="stat">Max<b id="smax">–</b></div>
+      <div class="stat">Avg<b id="savg">–</b></div>
+      <div class="stat">Median<b id="smed">–</b></div>
+    </div>
+    <div class="chips" id="gradeSummary" aria-live="polite"></div>
+  </div>
+
+  <!-- RIGHT: GRADING -->
+  <div class="panel">
+
+    <!-- MODE TOGGLE -->
+    <div class="mode-toggle" role="tablist">
+      <button class="mode-btn active" id="modeAbs" role="tab" aria-selected="true">Absolute Ranges</button>
+      <button class="mode-btn" id="modeRel" role="tab" aria-selected="false">Relative Grading</button>
+    </div>
+
+    <!-- ABSOLUTE MODE -->
+    <div id="absMode">
+      <p class="hint-row">Set the <b>minimum marks</b> for each grade. Max updates automatically so ranges never overlap or leave gaps.</p>
+      <div class="grade-grid" id="grades"></div>
+    </div>
+
+    <!-- RELATIVE MODE -->
+    <div id="relMode" style="display:none">
+      <p class="hint-row">Enter how many students should receive each grade. Cut-offs are calculated automatically from the actual mark distribution.</p>
+      <div class="grade-grid" id="relGrades"></div>
+      <div class="msg" id="relInfo" style="font-size:12px;color:var(--mut);margin-top:6px"></div>
+    </div>
+
+    <div class="msg err" id="rangeError" role="alert"></div>
+
+    <!-- NC SECTION -->
+    <div class="nc-section">
+      <h4>NC Students (did not appear)</h4>
+      <p class="hint-row" style="margin-bottom:6px">Paste BITS IDs separated by commas, spaces or new lines. They will be included in the final CSV with grade NC.</p>
+      <textarea id="ncInput" placeholder="e.g. 2024A001, 2024A002"></textarea>
+      <button class="sec" id="addNcBtn" style="margin-top:6px;font-size:12px;padding:6px 12px">Add NC Students</button>
+      <div class="nc-tags" id="ncTags"></div>
+    </div>
+
+    <div class="actions">
+      <button class="sec" id="resetRanges">Reset Ranges</button>
+      <button id="download" disabled>Finalize &amp; Download</button>
+    </div>
+
+    <div class="timer">
+      <div class="clk">
+        <svg width="88" height="88" aria-hidden="true">
+          <circle cx="44" cy="44" r="38" stroke="var(--chip)" stroke-width="6" fill="none"/>
+          <circle id="timerArc" cx="44" cy="44" r="38" stroke="var(--pri)" stroke-width="6" fill="none"
+            stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="238.76"/>
+        </svg>
+        <div id="timerText">00:00</div>
+      </div>
+    </div>
+    <div id="thankyou" class="msg ok-msg" aria-live="polite"></div>
+  </div>
+</div>
+
+<!-- STUDENT TABLE SECTION -->
+<div class="panel" style="margin-top:14px" id="tableSection">
+  <div class="tabs">
+    <button class="tab active" data-tab="tableTab">Student Preview</button>
+    <button class="tab" data-tab="ncTab">NC List</button>
+  </div>
+
+  <div id="tableTab">
+    <div class="search-row">
+      <input id="search" placeholder="Search by BITS ID…" aria-label="Search students">
+      <span class="count-label" id="countLabel"></span>
+      <select id="filterGrade" aria-label="Filter by grade" style="width:auto"><option value="">All grades</option></select>
+    </div>
+    <div class="tbl-wrap">
+      <table id="studentTable" aria-label="Student grades preview">
+        <thead><tr><th>#</th><th>BITS ID</th><th>Total Marks</th><th>Grade</th></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="ncTab" style="display:none">
+    <div class="tbl-wrap">
+      <table aria-label="NC students">
+        <thead><tr><th>#</th><th>BITS ID</th><th>Grade</th></tr></thead>
+        <tbody id="ncTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ── constants ──────────────────────────────────────────────────────────────
+const GRADES = ["A","A-","B","B-","C","C-","D","E"];
+const DEF_CUT = {A:80,"A-":70,B:60,"B-":50,C:40,"C-":30,D:20,E:0};
+const COLORS = ["#16a34a","#65a30d","#0d9488","#0284c7","#7c3aed","#c026d3","#ea580c","#dc2626"];
+const CIRC = 2 * Math.PI * 38;
+
+// ── state ──────────────────────────────────────────────────────────────────
+let rows = [], cut = {...DEF_CUT}, ncSet = new Set();
+let relCounts = Object.fromEntries(GRADES.map(g=>[g,0]));
+let mode = "abs"; // "abs" | "rel"
+let finalizeCount = 0, timerInterval = null;
+const startTime = Date.now();
+
+// ── helpers ────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const cur = () => rows.filter(r => r.course === $("course").value);
+const maxOf = i => i === 0 ? 100 : cut[GRADES[i-1]] - 1;
+const gradeOf = m => GRADES.find(g => m >= cut[g]) || "E";
+
+// ── timer ──────────────────────────────────────────────────────────────────
+function tick(){
+  const e = Date.now() - startTime;
+  $("timerText").textContent =
+    String(Math.floor(e/60000)).padStart(2,"0") + ":" +
+    String(Math.floor(e%60000/1000)).padStart(2,"0");
+  $("timerArc").style.strokeDashoffset = CIRC * (1 - Math.min(e/3600000, 1));
+}
+tick(); timerInterval = setInterval(tick, 1000);
+
+// ── theme ──────────────────────────────────────────────────────────────────
+$("themeBtn").onclick = () => {
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+  $("themeBtn").textContent = dark ? "🌙 Dark" : "☀️ Light";
+  render();
+};
+
+// ── file upload ────────────────────────────────────────────────────────────
+$("fileInput").onchange = e => {
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = ev => {
+    try {
+      const wb = XLSX.read(ev.target.result, {type:"array"});
+      ingest(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:""}));
+    } catch(x) {
+      $("report").innerHTML = '<div class="warnbox">Could not read this file. Please upload a valid .xlsx file.</div>';
+    }
+  };
+  rd.readAsArrayBuffer(f);
+};
+
+function ingest(raw){
+  rows = [];
+  const seen = new Set(), issues = [];
+  let rounded = 0;
+
+  raw.forEach((o, i) => {
+    const line = i + 2;
+    const id    = String(o["BITS ID"]     ?? "").trim();
+    const crs   = String(o["Course"]      ?? "").trim();
+    const rawM  = o["Total Marks"];
+    const m     = typeof rawM === "number" ? rawM : parseFloat(String(rawM).trim());
+
+    if(!id || !crs)      return issues.push(`Row ${line}: missing BITS ID or Course`);
+    if(!isFinite(m))     return issues.push(`Row ${line} (${id}): Total Marks is not a number`);
+    if(m < 0 || m > 100) return issues.push(`Row ${line} (${id}): marks ${m} out of range 0–100`);
+    if(seen.has(id+"|"+crs)) return issues.push(`Row ${line} (${id}): duplicate entry for this course`);
+    seen.add(id+"|"+crs);
+
+    const r = Math.ceil(m); if(r !== m) rounded++;
+    rows.push({id, course:crs, marks:r});
+  });
+
+  const courses = [...new Set(rows.map(r=>r.course))].sort();
+  const sel = $("course");
+  sel.innerHTML = "";
+  sel.add(new Option(courses.length ? "Select a course to begin" : "No valid data found", ""));
+  courses.forEach(c => sel.add(new Option(c, c)));
+  sel.disabled = !courses.length;
+
+  let h = `<div class="msg ok-msg">✓ Loaded ${rows.length} record(s) across ${courses.length} course(s).</div>`;
+  if(rounded) h += `<div class="msg" style="color:var(--mut);font-size:12px">${rounded} fractional mark(s) rounded up.</div>`;
+  if(issues.length) h += `<div class="warnbox"><b>${issues.length} row(s) skipped:</b><br>${issues.slice(0,6).join("<br>")}${issues.length>6?`<br>…and ${issues.length-6} more`:""}</div>`;
+  $("report").innerHTML = h;
+  $("welcome").textContent = "";
+  render();
+}
+
+// ── course change ──────────────────────────────────────────────────────────
+$("course").onchange = () => {
+  if(!$("instructor").value.trim()){
+    alert("Please enter instructor name first");
+    $("course").value = ""; return;
+  }
+  $("welcome").textContent = `Welcome ${$("instructor").value.trim()}. Please review and finalize grading.`;
+  cut = {...DEF_CUT};
+  relCounts = Object.fromEntries(GRADES.map(g=>[g,0]));
+  buildAbsUI(); buildRelUI();
+  render();
+};
+$("instructor").oninput = () => render();
+
+// ── mode toggle ────────────────────────────────────────────────────────────
+$("modeAbs").onclick = () => {
+  mode = "abs";
+  $("absMode").style.display = ""; $("relMode").style.display = "none";
+  $("modeAbs").classList.add("active"); $("modeRel").classList.remove("active");
+  render();
+};
+$("modeRel").onclick = () => {
+  mode = "rel";
+  $("relMode").style.display = ""; $("absMode").style.display = "none";
+  $("modeRel").classList.add("active"); $("modeAbs").classList.remove("active");
+  render();
+};
+
+// ── absolute UI ────────────────────────────────────────────────────────────
+function buildAbsUI(){
+  const g = $("grades"); g.innerHTML = "";
+  GRADES.forEach((n, i) => {
+    const d = document.createElement("div");
+    d.className = "grade-card";
+    d.innerHTML = `
+      <strong style="color:${COLORS[i]}">${n}</strong>
+      <label>Min marks</label>
+      <input type="number" min="0" max="100" id="c_${i}" ${i===7?"disabled":""} aria-label="Minimum for grade ${n}">
+      <div class="maxlabel" id="x_${i}"></div>`;
+    g.appendChild(d);
+    if(i < 7){
+      d.querySelector("input").oninput = e => {
+        const v = parseInt(e.target.value, 10);
+        if(!isNaN(v)) cut[n] = Math.max(0, Math.min(100, v));
+        render(true);
+      };
+    }
+  });
+}
+
+// ── relative UI ───────────────────────────────────────────────────────────
+function buildRelUI(){
+  const g = $("relGrades"); g.innerHTML = "";
+  GRADES.forEach((n, i) => {
+    const d = document.createElement("div");
+    d.className = "grade-card";
+    d.innerHTML = `
+      <strong style="color:${COLORS[i]}">${n}</strong>
+      <label># of students</label>
+      <input type="number" min="0" id="rc_${i}" value="0" aria-label="Count for grade ${n}">`;
+    g.appendChild(d);
+    d.querySelector("input").oninput = e => {
+      relCounts[n] = Math.max(0, parseInt(e.target.value,10)||0);
+      applyRelative();
+      render(true);
+    };
+  });
+}
+
+function applyRelative(){
+  const m = cur().map(r=>r.marks).sort((a,b)=>b-a); // desc
+  const total = m.length;
+  if(!total) return;
+  let idx = 0;
+  GRADES.forEach((g,i) => {
+    const cnt = relCounts[g];
+    if(i === GRADES.length-1){ cut[g] = 0; return; }
+    if(cnt === 0){ cut[g] = (i===0 ? 101 : cut[GRADES[i-1]]); return; }
+    const boundary = idx + cnt;
+    cut[g] = boundary < total ? m[boundary] + 1 : 0;
+    idx += cnt;
+  });
+  const assigned = Object.values(relCounts).reduce((a,b)=>a+b,0);
+  $("relInfo").textContent = assigned > total
+    ? `⚠ Total assigned (${assigned}) exceeds student count (${total}).`
+    : assigned < total
+    ? `${total - assigned} student(s) unassigned — adjust counts to total ${total}.`
+    : `✓ All ${total} students assigned.`;
+}
+
+// ── reset ──────────────────────────────────────────────────────────────────
+$("resetRanges").onclick = () => {
+  if(!confirm("Reset all grade ranges to default values?")) return;
+  cut = {...DEF_CUT};
+  relCounts = Object.fromEntries(GRADES.map(g=>[g,0]));
+  buildAbsUI(); buildRelUI();
+  render();
+};
+
+// ── NC ─────────────────────────────────────────────────────────────────────
+$("addNcBtn").onclick = () => {
+  const raw = $("ncInput").value;
+  const ids = raw.split(/[\s,\n]+/).map(s=>s.trim()).filter(Boolean);
+  ids.forEach(id => ncSet.add(id.toUpperCase()));
+  $("ncInput").value = "";
+  renderNcTags();
+  render();
+};
+
+function renderNcTags(){
+  const wrap = $("ncTags");
+  wrap.innerHTML = "";
+  [...ncSet].forEach(id => {
+    const tag = document.createElement("div");
+    tag.className = "nc-tag";
+    tag.innerHTML = `<span>${id}</span><button aria-label="Remove ${id}">×</button>`;
+    tag.querySelector("button").onclick = () => { ncSet.delete(id); renderNcTags(); render(); };
+    wrap.appendChild(tag);
+  });
+}
+
+// ── validate ───────────────────────────────────────────────────────────────
+function validate(){
+  if(mode === "rel"){
+    const total = Object.values(relCounts).reduce((a,b)=>a+b,0);
+    const n = cur().length;
+    if(n && total !== n) return `Total assigned (${total}) must equal student count (${n}).`;
+    return "";
+  }
+  for(let i=0;i<7;i++){
+    if(!(cut[GRADES[i]] > cut[GRADES[i+1]]))
+      return `Min for ${GRADES[i]} must be greater than min for ${GRADES[i+1]}.`;
+  }
+  return "";
+}
+
+// ── stats ──────────────────────────────────────────────────────────────────
+function stats(m){
+  const s=[...m].sort((a,b)=>a-b), n=s.length;
+  if(!n) return null;
+  return{
+    min:s[0], max:s[n-1],
+    avg:s.reduce((a,b)=>a+b,0)/n,
+    med:n%2 ? s[(n-1)/2] : (s[n/2-1]+s[n/2])/2
+  };
+}
+
+// ── main render ────────────────────────────────────────────────────────────
+function render(typing){
+  // sync abs inputs
+  if($("grades").children.length){
+    GRADES.forEach((n,i)=>{
+      const inp = $("c_"+i);
+      if(inp && !(typing && document.activeElement===inp)) inp.value = cut[n];
+      const lbl = $("x_"+i);
+      if(lbl) lbl.textContent = `Max: ${maxOf(i)}`;
+    });
+  }
+
+  const d = cur(), m = d.map(r=>r.marks), s = stats(m);
+  const err = validate();
+  $("rangeError").textContent = err;
+  $("download").disabled = !!err || !s || !$("instructor").value.trim();
+
+  $("smin").textContent = s ? s.min : "–";
+  $("smax").textContent = s ? s.max : "–";
+  $("savg").textContent = s ? s.avg.toFixed(2) : "–";
+  $("smed").textContent = s ? s.med : "–";
+
+  // grade summary chips
+  const counts = Object.fromEntries(GRADES.map(g=>[g,0]));
+  if(!err && m.length) m.forEach(x => counts[gradeOf(x)]++);
+  $("gradeSummary").innerHTML = GRADES.map(g =>
+    `<span style="background:${COLORS[GRADES.indexOf(g)]}22;color:${COLORS[GRADES.indexOf(g)]}">${g}: ${counts[g]}${m.length?" ("+Math.round(100*counts[g]/m.length)+"%)" :""}</span>`
+  ).join("");
+
+  draw(m, s, err);
+  renderTable(d, err);
+  renderNcTable();
+
+  // grade filter options
+  const fg = $("filterGrade");
+  const prev = fg.value;
+  fg.innerHTML = '<option value="">All grades</option>';
+  GRADES.forEach(g => fg.add(new Option(g,g)));
+  fg.value = prev;
+}
+
+// ── histogram ──────────────────────────────────────────────────────────────
+function draw(m, s, err){
+  const cv = $("hist"), x = cv.getContext("2d");
+  const W=760,H=460,L=54,B=64,T=24,pw=W-L-20,ph=H-B-T;
+  x.clearRect(0,0,W,H);
+  const isDark = document.documentElement.getAttribute("data-theme")==="dark";
+  const fg = isDark ? "#e5e7eb" : "#111827";
+  const gridC = isDark ? "#2d2b4e" : "#e5e7eb";
+
+  if(!m.length){
+    x.fillStyle=fg; x.font="24px Arial"; x.textAlign="center";
+    x.fillText("Select a course to see the distribution", W/2, H/2);
+    return;
+  }
+
+  const bins = Array(10).fill(0);
+  m.forEach(v => bins[Math.min(9, Math.floor(v/10))]++);
+  const top = Math.max(...bins, 1);
+  const bw = pw/10;
+  const sy = v => T + ph - (v/top)*ph*0.88;
+
+  // grid lines
+  [0.25,0.5,0.75,1].forEach(p=>{
+    const y = T + ph*(1 - p*0.88);
+    x.strokeStyle=gridC; x.lineWidth=1; x.setLineDash([4,4]);
+    x.beginPath(); x.moveTo(L,y); x.lineTo(L+pw,y); x.stroke();
+    x.setLineDash([]);
+    x.fillStyle=fg; x.font="18px Arial"; x.textAlign="right";
+    x.fillText(Math.round(top*p), L-6, y+4);
+  });
+
+  // bars
+  bins.forEach((v,i)=>{
+    const bx = L + i*bw, by = sy(v), bh = T+ph-by;
+    const g2 = x.createLinearGradient(0,by,0,by+bh);
+    g2.addColorStop(0,"#7c5cf8"); g2.addColorStop(1,"#5b3cc4");
+    x.fillStyle = g2;
+    x.beginPath();
+    x.roundRect ? x.roundRect(bx+4,by,bw-8,bh,4) : x.rect(bx+4,by,bw-8,bh);
+    x.fill();
+    if(v){ x.fillStyle=fg; x.font="18px Arial"; x.textAlign="center"; x.fillText(v, bx+bw/2, by-6); }
+    x.fillStyle=fg; x.font="17px Arial"; x.textAlign="center";
+    x.fillText(i*10, bx+4, H-B+26);
+  });
+  x.fillStyle=fg; x.font="17px Arial"; x.textAlign="center";
+  x.fillText("100", L+pw, H-B+26);
+
+  // bell curve
+  if(s && s.min !== s.max){
+    const sd = Math.sqrt(m.reduce((a,b)=>a+(b-s.avg)**2,0)/m.length);
+    if(sd>0){
+      x.strokeStyle="#dc2626"; x.lineWidth=2.5; x.setLineDash([]);
+      x.beginPath();
+      for(let v=0;v<=100;v++){
+        const y = m.length*10*Math.exp(-0.5*((v-s.avg)/sd)**2)/(sd*Math.sqrt(2*Math.PI));
+        const px = L+v/100*pw, py = Math.max(T, sy(y));
+        v ? x.lineTo(px,py) : x.moveTo(px,py);
+      }
+      x.stroke();
+    }
+  }
+
+  // cut-off lines
+  if(!err){
+    x.setLineDash([6,6]); x.lineWidth=1.5;
+    GRADES.slice(0,7).forEach((g,i)=>{
+      if(cut[g]<=0||cut[g]>100) return;
+      const px = L + cut[g]/100*pw;
+      x.strokeStyle=COLORS[i];
+      x.beginPath(); x.moveTo(px,T); x.lineTo(px,T+ph); x.stroke();
+      x.fillStyle=COLORS[i]; x.font="bold 17px Arial"; x.textAlign="left";
+      x.fillText(g, px+3, T+18);
+    });
+    x.setLineDash([]);
+  }
+
+  // axes
+  x.strokeStyle=fg; x.lineWidth=1.5;
+  x.beginPath(); x.moveTo(L,T); x.lineTo(L,T+ph); x.lineTo(L+pw,T+ph); x.stroke();
+  x.fillStyle=fg; x.font="18px Arial"; x.textAlign="center";
+  x.fillText("Marks →", L+pw/2, H-4);
+}
+
+// ── student table ──────────────────────────────────────────────────────────
+$("search").oninput = () => renderTable(cur(), validate());
+$("filterGrade").onchange = () => renderTable(cur(), validate());
+
+function renderTable(d, err){
+  const q = $("search").value.toLowerCase();
+  const fg = $("filterGrade").value;
+  let rows_f = d;
+  if(!err){
+    rows_f = d.filter(r=>{
+      const g = gradeOf(r.marks);
+      return r.id.toLowerCase().includes(q) && (fg===""||g===fg);
+    });
+  }
+  const tbody = $("tableBody");
+  if(!d.length){
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Select a course to preview student grades</div></td></tr>`;
+    $("countLabel").textContent="";
+    return;
+  }
+  $("countLabel").textContent = `${rows_f.length} of ${d.length} student(s)`;
+  tbody.innerHTML = rows_f.map((r,i)=>{
+    const g = err ? "–" : gradeOf(r.marks);
+    const c = err ? "#888" : COLORS[GRADES.indexOf(g)];
+    return `<tr>
+      <td>${i+1}</td>
+      <td><b>${r.id}</b></td>
+      <td>${r.marks}</td>
+      <td><span class="grade-badge" style="background:${c}">${g}</span></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="4"><div class="empty-state">No students match this filter</div></td></tr>`;
+}
+
+function renderNcTable(){
+  const tbody = $("ncTableBody");
+  if(!ncSet.size){
+    tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state">No NC students added yet</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = [...ncSet].map((id,i)=>
+    `<tr><td>${i+1}</td><td><b>${id}</b></td><td><span class="grade-badge" style="background:#6b7280">NC</span></td></tr>`
+  ).join("");
+}
+
+// ── tabs ───────────────────────────────────────────────────────────────────
+document.querySelectorAll(".tab").forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    ["tableTab","ncTab"].forEach(id=>$(id).style.display="none");
+    $(btn.dataset.tab).style.display="";
+  };
+});
+
+// ── CSV export ─────────────────────────────────────────────────────────────
+const q = v => { v=String(v); if(/^[=+\-@]/.test(v)) v="'"+v; return /[",\n]/.test(v)?`"${v.replace(/"/g,'""')}"`:v; };
+
+$("download").onclick = () => {
+  const d = cur();
+  const err = validate();
+  if(err){ alert(err); return; }
+
+  const counts = Object.fromEntries(GRADES.map(g=>[g,0]));
+  d.forEach(r => counts[gradeOf(r.marks)]++);
+  const summary = GRADES.map(g=>`${g}: ${counts[g]}`).join("   ");
+  const ncCount = ncSet.size;
+
+  if(!confirm(`Finalize grades for ${$("course").value}?\n\n${summary}\nNC: ${ncCount}\nTotal: ${d.length + ncCount} students`)) return;
+
+  finalizeCount++;
+  clearInterval(timerInterval);
+  const e = Date.now()-startTime;
+  const mi = Math.floor(e/60000), se = Math.floor(e%60000/1000);
+
+  let csv = `Instructor,${q($("instructor").value.trim())}\nCourse,${q($("course").value)}\n\nBITS ID,Total Marks,Grade\n`;
+  d.forEach(r => csv += `${q(r.id)},${r.marks},${gradeOf(r.marks)}\n`);
+  [...ncSet].forEach(id => csv += `${q(id)},–,NC\n`);
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download = ($("course").value.replace(/[^\w\-]+/g,"_")||"course")+"_grades.csv";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+
+  const suf = ["","first","second","third"][finalizeCount] || finalizeCount+"th";
+  $("thankyou").textContent = finalizeCount===1
+    ? `✓ Completed grading in ${mi} min ${se} sec (first attempt).`
+    : `Total time: ${mi} min ${se} sec — ${suf} attempt.`;
+};
+
+// ── init ───────────────────────────────────────────────────────────────────
+buildAbsUI();
+render();
+</script>
+</body>
+</html>
