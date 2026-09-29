@@ -5,7 +5,7 @@ A production-grade grading console built for the BITS Digital CodeForge V1.0 cha
 
 🌐 Live Demo
 
-Click here to open the app ← replace with your deployed URL
+[Click here to open the app](https://bits-grading-console.onrender.com) ← replace with your deployed URL
 
 📁 Repository Structure
 ├── index.html        # Complete single-file application
